@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapping SYSTEM "file://bladelogic.com/dtds/Import-Mapping.dtd">
+<mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSHSCRIPT</object_type>
+            <object_name>Change Tracking (All)</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking/CT_15</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSHSCRIPT</object_type>
+            <object_name>Servers Active</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking/CT_15</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSHSCRIPT</object_type>
+            <object_name>Servers Complete</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking/CT_15</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSHSCRIPT</object_type>
+            <object_name>Sleep</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking/CT_15</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSHSCRIPT</object_type>
+            <object_name>Change Tracking (Authorized)</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking/CT_15</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSH_SCRIPT_JOB</object_type>
+            <object_name>Servers Active</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0/Utilities</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>BATCH_JOB</object_type>
+            <object_name>Change Tracking Batch Job (Windows)</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSH_SCRIPT_JOB</object_type>
+            <object_name>Servers Complete</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0/Utilities</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSH_SCRIPT_JOB</object_type>
+            <object_name>sleep</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0/Utilities</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSH_SCRIPT_JOB</object_type>
+            <object_name>Change Tracking Windows 2003 (All)</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0</containing_group>
+    </grouped_object_mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>NSH_SCRIPT_JOB</object_type>
+            <object_name>Change Tracking Windows 2003 (Authorized)</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Change Tracking V2.0</containing_group>
+    </grouped_object_mapping>
+</mapping>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapping SYSTEM "file://bladelogic.com/dtds/Import-Mapping.dtd">
+<mapping>
+    <grouped_object_mapping>
+        <source_object>
+            <object_type>TEMPLATE</object_type>
+            <object_name>PCI Data Security Standard (File Integrity) -
+                Windows Server 2003 v1.0</object_name>
+        </source_object>
+        <!--This is the path to the group into which the object will be imported-->
+        <containing_group>/Workspace/Frank/CT_15</containing_group>
+    </grouped_object_mapping>
+</mapping>

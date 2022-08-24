@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE command_inventory SYSTEM "file://bladelogic.com/dtds/Command-Inventory.dtd">
+<command_inventory>
+    <name_space name="SnapshotJob">
+       	<complex_command command_id="clearComponentListPS" published="yes" release="yes">  
+		<name>clearComponentListPS</name>
+		<description>
+			<author/>
+			<paragraph/>
+		</description>
+		        <argument_list>
+            <argument name="jobGroup">java.lang.String</argument>
+            <argument name="jobName">java.lang.String</argument>
+        </argument_list>
+        <commands_to_execute>
+            <command_invocation>
+                <namespace_ref>SnapshotJob</namespace_ref>
+                <name>getDBKeyByGroupAndName</name>
+                <input>$jobGroup$ $jobName$</input>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>SnapshotJob</namespace_ref>
+                <name>clearSJobComponentList</name>
+                <input/>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>Job</namespace_ref>
+                <name>update</name>
+                <input/>
+	    </command_invocation>
+          <command_invocation>
+			<namespace_ref>Job</namespace_ref>
+			<name>getDBKey</name>
+			<input></input>
+		</command_invocation>
+        </commands_to_execute>
+	</complex_command>
+     </name_space>
+</command_inventory>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE command_inventory SYSTEM "file://bladelogic.com/dtds/Command-Inventory.dtd">
+<command_inventory>
+    <name_space name="AuditJob">
+    <complex_command release="yes">
+        <name>resetJobMasterSnapshot</name>
+        <description>
+           <author>Bill Robinson</author>
+           <general_info>
+               Resets the master of a snapshot job to the snapshot argument provided.
+            </general_info>
+        </description>
+        <argument_list>
+            <argument name="jobGroup">java.lang.String</argument>
+            <argument name="jobName">java.lang.String</argument>
+		<argument name="snapshotKey">com.bladelogic.model.base.keys.DBKey</argument>
+        </argument_list>
+        <commands_to_execute>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>getDBKeyByGroupAndName</name>
+                <input>$jobGroup$ $jobName$</input>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>clearSJobMasterSnapshotList</name>
+                <input/>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>Job</namespace_ref>
+                <name>update</name>
+                <input/>
+	    </command_invocation>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>addSJobMasterSnapshot</name>
+                <input>$snapshotKey$</input>
+            </command_invocation>
+	    <command_invocation>
+		<namespace_ref>Job</namespace_ref>
+		<name>update</name>
+		<input/>
+            </command_invocation>
+		<command_invocation>
+			<namespace_ref>Job</namespace_ref>
+			<name>getDBKey</name>
+			<input></input>
+		</command_invocation>
+        </commands_to_execute>
+    </complex_command>
+ <complex_command release="yes">
+        <name>resetJobTargetSnapshot</name>
+        <description>
+           <author>Bill Robinson</author>
+           <general_info>
+               Remove all targets from the audit job and set the target as a single snapshot.
+            </general_info>
+        </description>
+        <argument_list>
+            <argument name="jobGroup">java.lang.String</argument>
+            <argument name="jobName">java.lang.String</argument>
+		<argument name="snapshotKey">com.bladelogic.model.base.keys.DBKey</argument>
+        </argument_list>
+        <commands_to_execute>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>getDBKeyByGroupAndName</name>
+                <input>$jobGroup$ $jobName$</input>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>clearSJobSnapshotList</name>
+                <input/>
+            </command_invocation>
+            <command_invocation>
+                <namespace_ref>Job</namespace_ref>
+                <name>update</name>
+                <input/>
+	    </command_invocation>
+            <command_invocation>
+                <namespace_ref>AuditJob</namespace_ref>
+                <name>addSJobSnapshot</name>
+                <input>$snapshotKey$</input>
+            </command_invocation>
+	    <command_invocation>
+		<namespace_ref>Job</namespace_ref>
+		<name>update</name>
+		<input/>
+            </command_invocation>
+		<command_invocation>
+			<namespace_ref>Job</namespace_ref>
+			<name>getDBKey</name>
+			<input/>
+		</command_invocation>
+        </commands_to_execute>
+    </complex_command>
+  </name_space>
+</command_inventory>

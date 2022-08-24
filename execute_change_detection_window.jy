@@ -1,0 +1,718 @@
+#!/usr/bin/env jython
+"""
+
+Script Usage:
+bljython execute_change_detection_window.jy <args>
+
+Arguments:
+	-c	<masterComponentGroup> 
+	-g	<masterTemplateGroup> 
+	-t	<templateName> 
+	-s	<masterSnapshotJobGroup>
+	-a	<masterAuditJobGroup>
+	-u	<unauthorizedAuditJobGroup>
+	-n	<snmpHost>
+	-d	<true|false>  debug output
+
+Note: If you specify snmp you will get a notification for 
+      each AuditJob as it finishes.  This script requires Jython 2.2. 
+
+      This script will also set some properties on the various jobs.
+      If you don't need or want these properties, remove them.   
+
+"""
+
+# Library imports
+import sys
+import os
+import string as s
+import re
+import getopt
+
+# Check for the right version of jython or exit
+if not (sys.version[:3] == '2.2'):
+	printError ('This script requires Jython >= 2.2')
+	sys.exit(1)
+else:	
+	import datetime
+
+import bladelogic.cli.CLI as blcli
+from com.bladelogic.client import BRProfile
+
+def printInfo(text):
+	print " -- " + text
+
+def printDebug(text):
+	if(DEBUG == '1'): 
+		print " - DEBUG: "+text
+
+def printError(error):
+	print " - ERROR: "+error
+
+def runBlcliCmd(NameSpace,blcliCmd,args):
+	cmd = []
+	cmd.append(NameSpace)
+	cmd.append(blcliCmd)
+	dataType = str(type(args))
+	if dataType.find('list') >= 0:
+		for arg in args:
+			cmd.append(str(arg))
+	else:
+		cmd.append(str(args))
+		
+	try:
+		printDebug('BLCLI ARGS - ' + str(cmd))
+		blcliResult = jli.run(cmd)
+		assert blcliResult, "ERROR: Failed executing " + blcliCmd
+	except AssertionError,e:
+		print e
+	
+	if ( blcliResult.getError() ):
+		printError (str(blcliResult.error))
+
+	printDebug('BLCLI RESULT - ' + str(blcliResult.returnValue))
+	return blcliResult
+
+def usage(code):
+	print __doc__
+	sys.exit(code)
+
+def parseArgs(argsArray):
+	try:
+		opts,args = getopt.getopt(argsArray, "c:a:g:s:t:u:n:d:")
+	except getopt.GetoptError:
+		printError ('Incorrect arguments supplied')
+		usage(1)
+	if (len(opts)) == 0:
+		printError ('No arguments supplied')
+		usage(1)
+	
+	for opt in opts:
+		if(opt[0]=='-h'): usage(0)
+	optList = {}
+	for opt in opts: 
+		optList[opt[0]] = opt[1]
+	return optList
+
+def getJobGroupId(jobGroup):
+	# Retrieve job directory
+	printInfo("Retrieving Job Group ["+jobGroup+"].")
+	getJobGroupResult = runBlcliCmd('JobGroup','groupNameToId',[jobGroup])
+	if (getJobGroupResult.success()):
+		getJobGroupId = getJobGroupResult.returnValue
+	else:
+		printError("The Job Group ["+jobGroup+"] does not exist.  Exiting...")
+		sys.exit(1)	
+	return getJobGroupId
+
+def getTemplateKey(masterTemplateGroup,templateName):
+	# Retrieve the template
+	printInfo("Retrieving Template ["+templateName+"].")
+	templateResult = runBlcliCmd('Template','getDBKeyByGroupAndName',[masterTemplateGroup,templateName])
+	if (templateResult.success()):
+		templateKey = templateResult.returnValue		
+	else:
+		printError("The Template ["+templateName+"] does not exist.  Exiting...")	
+		sys.exit(1)
+	return templateKey
+
+def getListFromDBKey(namespace,command,DBKey):
+	dbKeyList = runBlcliCmd(namespace,command,[DBKey])
+	if (dbKeyList.success()):
+		dbKeyList = dbKeyList.returnValue
+		dbKeyList = dbKeyList.strip()
+		dbKeyList = re.split('\n',dbKeyList)
+		#The sorting function has been disabled as DBKeys are not guaranteed to
+		#be in chronological order. Please be sure to review README and update
+		#sqlmap.properties file accordingly.
+		#dbKeyList.sort()
+		dbKeyList.reverse()
+	else:
+		printError("Cannot get a "+namespace+" list for DBKey: ["+DBKey+"]")
+		dbKeyList = []
+		sys.exit(1)
+
+	return dbKeyList
+
+def getServerPropertyValue(serverName,propertyName):
+	propertyValue = runBlcliCmd('Server','printPropertyValue',[serverName,propertyName])
+	
+	if (propertyValue.error):
+		printError("Cannot get value for Server Property ["+propertyName+"] on Server: ["+serverName+"]")
+	else:
+		pass
+	
+	return propertyValue
+                
+def setServerPropertyValueByName(serverName,propertyName,propertyValue):
+	propertyValue = runBlcliCmd('Server','setPropertyValueByName',[serverName,propertyName,propertyValue])
+	
+	if (propertyValue.error):
+		printError("Cannot set value ["+propertyValue+"] for Server Property ["+propertyName+"] on Server: ["+serverName+"]")
+	else:
+		pass
+	
+	return propertyValue
+
+
+def addTime(diff):
+	currentTime = datetime.datetime.now()
+	diffTime = datetime.timedelta(minutes=diff)
+	scheduleTime = currentTime + diffTime
+	scheduleTime = scheduleTime.strftime("%Y-%m-%d %H:%M:%S")
+	return scheduleTime
+
+def setSnapshotJobKey(masterSnapshotJobGroup,snapshotJobName,componentList):
+	printInfo("Retrieving Snapshot Job ["+snapshotJobName+"].")
+	snapshotJobKey = runBlcliCmd('SnapshotJob','getDBKeyByGroupAndName',[masterSnapshotJobGroup,snapshotJobName])
+
+	if (snapshotJobKey.error):
+		# Create the snapshotJob because it doesn't exist
+		printInfo("Creating Snapshot Job ["+snapshotJobName+"].")
+		masterSnapshotGroupId = getJobGroupId(masterSnapshotJobGroup)
+		snapshotJobKey = runBlcliCmd('SnapshotJob','createComponentBasedSnapshotJob',[snapshotJobName,masterSnapshotGroupId,componentList[0]])
+		if (snapshotJobKey.error):
+			printError("Could not create SnapshotJob: ["+snapshotJobName+"]")
+			sys.exit(1)
+		# Clear the target list
+		printInfo("Clearing Snapshot Job Target List ["+snapshotJobName+"].")
+		snapshotJobKey = runBlcliCmd('SnapshotJob','clearComponentListPS',[masterSnapshotJobGroup,snapshotJobName])
+		if (snapshotJobKey.error):
+			printError("Could not clear the Snapshot Job: ["+snapshotJobName+"]")
+			sys.exit(1)
+		# Retarget the Job
+		printInfo("Targeting Snapshot Job ["+snapshotJobName+"].")
+		snapshotJobKey = runBlcliCmd('SnapshotJob','getDBKeyByGroupAndName',[masterSnapshotJobGroup,snapshotJobName])
+		if (snapshotJobKey.success()):
+			snapshotJobKey = snapshotJobKey.returnValue
+		else:
+			printError("Could not retrieve SnapshotJob ID: ["+snapshotJobName+"]")
+			sys.exit(1)
+		snapshotJobKey = runBlcliCmd('Job','addTargetComponentGroup',[snapshotJobKey,masterComponentGroup])
+		if (snapshotJobKey.error):
+			printError("Could not clear the Snapshot Job: ["+snapshotJobName+"]")
+			sys.exit(1)		
+
+	return snapshotJobKey.returnValue
+
+def validateSnapshot(snapshotKey,jobKey,jobRunKey,componentKey):
+	logItemComponentList = []
+	logItemEventTypeIdList = []
+
+	componentName = runBlcliCmd('Component','componentKeyToName',[componentKey]).returnValue
+	printDebug ('Validating Component: ['+componentName+']')
+	jobRunId = runBlcliCmd('JobRun','jobRunKeyToJobRunId',[jobRunKey])
+	
+	if ( jobRunId.success()):
+		jobRunId = jobRunId.returnValue
+	else:
+		printError ('Cannot get jobRunId for jobRunKey: ['+jobRunKey+']')
+		printError (jobRunId.error)
+		sys.exit(1)
+
+	# Get the list of components from the jobRun
+	logItemComponentList = runBlcliCmd('LogItem','getComponentKeyByJobRunPS',[jobKey,jobRunId])
+	if (logItemComponentList.success()):
+		logItemComponentList = logItemComponentList.returnValue
+		logItemComponentList = logItemComponentList.strip()
+		logItemComponentList = re.split('\n',logItemComponentList)
+
+
+	else:
+		printError ('Cannot get the LogItem Component List')
+		printError (logItemComponentList.error)
+		sys.exit(1)
+
+	logItemEventTypeIdList = runBlcliCmd('LogItem','getEventTypeIdByJobRunPS',[jobKey,jobRunId])
+	if (logItemEventTypeIdList.success()):
+		logItemEventTypeIdList = logItemEventTypeIdList.returnValue
+		logItemEventTypeIdList = logItemEventTypeIdList.strip()
+		logItemEventTypeIdList = re.split('\n',logItemEventTypeIdList)
+	else:
+		printError ('Cannot get the LogItem Event Type Id List')
+		printError (logItemEventTypeIdList.error)
+		sys.exit(1)
+
+	# Look through the log output to see if there are any errors.
+	for z in range(len(logItemEventTypeIdList)):
+		if ( str(logItemEventTypeIdList[z]) == "-1" ):
+			printError ('There is an error in the Snapshot Job Run Log')
+			# If the component key for the snapshot is correlated w/ an error then the snapshot is bad
+			if ( str(componentKey) == str(logItemComponentList[z]) ):
+				# Bad Snapshot
+				#snapshotKey = 'Bad'
+				snapshotKey = snapshotKey
+				printDebug ('A Snapshot is likely bad for Component: ['+componentName+']')
+				printDebug ('Correlation Component to Snapshot: ['+str(componentKey)+'] ['+str(logItemComponentList[z])+']')
+			else:
+				snapshotKey = snapshotKey
+		else:
+			snapshotKey = snapshotKey
+	if (logItemEventTypeIdList[0] == '' ):
+		# Bad log return, skip the snapshot
+		printError ('No logs for Component: ['+componentName+'], skipping.')
+		#3snapshotKey = 'Bad'
+		snapshotKey = snapshotKey
+		
+
+	return snapshotKey
+
+def validateComponentSmartGroup(masterComponentGroup):
+	printInfo('Validating Component SmartGroup: ['+masterComponentGroup+']')
+	smartGroupKey = runBlcliCmd('SmartComponentGroup','findGroupByQualifiedName',[masterComponentGroup])
+	if (smartGroupKey.success()):
+		smartGroupKey = smartGroupKey.returnValue
+	else:
+		printError("Could not Validate Component Smart Group: ["+masterComponentGroup+"]")
+		sys.exit(1)
+
+	return smartGroupKey
+		
+def main():
+	# Check the various parts we need and get their Ids or DBKeys
+	printInfo ('Starting Main')
+	templateKey = getTemplateKey(masterTemplateGroup,templateName)
+	snapshotJobName = "Change Tracking (Authorized) - "+templateName
+	componentList = getListFromDBKey('Component','findAllByTemplatePS',templateKey)
+
+	if ( componentList[0] == ''):
+		printError ('No Components for Template: ['+templateName+']')
+		sys.exit(1)
+
+	# See if there is a component smartgroup for this
+	smartGroupKey = validateComponentSmartGroup(masterComponentGroup)
+	
+	# See if there is a snapshot job for this
+	printInfo('Setup the Snapshot Job: ['+snapshotJobName+']')
+	snapshotJobKey = setSnapshotJobKey(masterSnapshotJobGroup,snapshotJobName,componentList)
+
+	# Clear and Add Target Components based on the valid list of components
+	printInfo('Clearing Target Components from Component Smart Group: ['+masterComponentGroup+']')
+	smartGroupKey = runBlcliCmd('SmartComponentGroup','resetConditions',[masterComponentGroup,'NAME','equals',''])
+	if (smartGroupKey.success()):
+		smartGroupKey = smartGroupKey.returnValue
+	else:
+		printError("Could not clear target Components on Component Smart Group: ["+masterComponentGroup+"]")
+		sys.exit(1)
+	
+	printInfo('Adding Target Components to Component Smart Group: ['+masterComponentGroup+']')
+	componentCount = 0
+	for componentKey in componentList:
+		
+		# Check each component to validate that the server is avaiable
+		# The TARGET key contains the name of the target server
+		# so we need to locate,extract and parse the value
+		propKey = "TARGET"
+		componentKeyNamedObject = "NAMED_OBJECT="+componentKey
+		
+		# Pull out the value and strip out the 'basename'. The result is the target server name
+		cwActive = runBlcliCmd('Component','getFullyResolvedPropertyValue',[componentKeyNamedObject,propKey]).returnValue
+		printDebug('['+propKey+']: ['+str(cwActive)+']')
+		m = re.search('(?<=Class://SystemObject/Server/)\S+', str(cwActive))
+		targetServer = m.group(0)
+		
+		# Determine if the server is online
+		propKey = "AGENT_STATUS"
+		agentStatus = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(agentStatus)+']')
+		propKey = "IS_ONLINE"
+		isOnline = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(isOnline)+']')
+		propKey = "STATE"
+		agentState = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(agentState)+']')
+		if (str(agentStatus) != 'agent is alive' or str(isOnline) != 'true' or str(agentState) != 'Enrolled'):
+			printInfo('Skipping Snapshot, Server: ['+targetServer+'] is NOT ONLINE')
+			continue
+			
+		# Determine if Change Window Active is true
+		propKey = "CW_ACTIVE"
+		cwActive = runBlcliCmd('Server','getFullyResolvedPropertyValue',[targetServer,propKey]).returnValue
+		printDebug('['+propKey+']: ['+str(cwActive)+']')
+		
+		# Determine what Snapshot phase we are in
+		propKey = "CW_SNAPSHOT_PASS"
+		cwSnapshotPass = getServerPropertyValue(targetServer,propKey).returnValue
+		
+		# Determine if the change is complete
+		propKey = "CW_CHANGE_COMPLETE"
+		cwChangeComplete = getServerPropertyValue(targetServer,propKey).returnValue
+		
+		# Skip the component if not active
+		if (str(cwActive) == 'false'):
+			printInfo('Skipping Snapshot, Change Window is NOT ACTIVE for: ['+targetServer+']')
+			continue
+		elif (str(cwSnapshotPass) == 'true' and str(cwChangeComplete) == 'false'):
+			printInfo('Skipping Snapshot, Changes are NOT COMPLETE for: ['+targetServer+']')
+			continue
+		else:
+			printInfo('Enabling Snapshot, Change Window is ACTIVE for: ['+targetServer+']')
+		
+		# If we make it to this point the component is "good" for a snapshot
+		# Covert the Key to a name
+		componentKeyName = runBlcliCmd('Component','componentKeyToName',[componentKey])
+		if (componentKeyName.success()):
+			componentKeyName = componentKeyName.returnValue
+		else:
+			printError("Could not retrieve target Component Name from Component Key: ["+componentKey+"]")
+			sys.exit(1)
+		
+		# Add a rule to the Smart Group that matches the component
+		smartGroupKey = runBlcliCmd('SmartComponentGroup','addCondition',[masterComponentGroup,'NAME','equals',componentKeyName])
+		if (smartGroupKey.success()):
+			smartGroupKey = smartGroupKey.returnValue
+			componentCount = componentCount + 1
+		else:
+			printError("Could not set target Component ["+componentKey+"] on Component Smart Group: ["+masterComponentGroup+"]")
+			sys.exit(1)
+			
+		
+	# If no components were added exit now!
+	if (componentCount == 0):
+		printInfo('No Qualifying Servers Found')
+		sys.exit(0)
+		
+	
+	# Execute the snapshot job
+	printInfo('Running the Snapshot Job: ['+snapshotJobName+']')
+	snapshotJobRun = runBlcliCmd('SnapshotJob','executeJobAndWait',[snapshotJobKey])
+	
+	if (snapshotJobRun.success()):
+		snapshotJobRun = snapshotJobRun.returnValue
+	else:
+		printError ('Error Running the Snapshot Job: ['+snapshotJobName+']')
+		printError (snapshotJobRun.error())
+		sys.exit(1)
+
+	######################################################################################
+	# The snapshots have been run, now we must audit for each of the created snapshots
+	######################################################################################
+
+	# Check the snapshot job for errors and remove related components
+	printInfo('Prepare to Run the Audits')
+	
+	# For each component set up an Audit Job
+	for componentKey in componentList:
+		componentName = runBlcliCmd('Component','componentKeyToName',[componentKey]).returnValue
+		
+		# Get the snapshots associated w/ the component
+		snapshotList = getListFromDBKey('Snapshot','findAllByComponentPS',componentKey)
+		snapshotJobRunList = getListFromDBKey('JobRun','findAllRunKeysByJobKey',snapshotJobKey)
+		snapshotNewKey = snapshotList[0]
+		
+		# Check each component to validate that the change window is active
+		# The TARGET key contains the name of the target server
+		# so we need to locate,extract and parse the value
+		propKey = "TARGET"
+		componentKeyNamedObject = "NAMED_OBJECT="+componentKey
+		
+		# Pull out the value and strip out the 'basename'. The result is the target server name
+		cwActive = runBlcliCmd('Component','getFullyResolvedPropertyValue',[componentKeyNamedObject,propKey]).returnValue
+		printDebug('['+propKey+']: ['+str(cwActive)+']')
+		m = re.search('(?<=Class://SystemObject/Server/)\S+', str(cwActive))
+		targetServer = m.group(0)
+		
+		# Determine if the server is online
+		propKey = "AGENT_STATUS"
+		agentStatus = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(agentStatus)+']')
+		propKey = "IS_ONLINE"
+		isOnline = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(isOnline)+']')
+		propKey = "STATE"
+		agentState = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(agentState)+']')
+		if (str(agentStatus) != 'agent is alive' or str(isOnline) != 'true' or str(agentState) != 'Enrolled'):
+			printInfo('Skipping Snapshot, Server: ['+targetServer+'] is NOT ONLINE')
+			continue
+		
+		# Determine if Change Window Active is true
+		propKey = "CW_ACTIVE"
+		cwActive = runBlcliCmd('Server','getFullyResolvedPropertyValue',[targetServer,propKey]).returnValue
+		printDebug('['+propKey+']: ['+str(cwActive)+']')
+		
+		# Determine what Snapshot phase we are in
+		propKey = "CW_SNAPSHOT_PASS"
+		cwSnapshotPass = getServerPropertyValue(targetServer,propKey).returnValue
+		
+		# Determine if the change is complete
+		propKey = "CW_CHANGE_COMPLETE"
+		cwChangeComplete = getServerPropertyValue(targetServer,propKey).returnValue
+		
+		# Determine if a ticket or ID number is associated with this change
+		propKey = "CW_ID"
+		cwID = getServerPropertyValue(targetServer,propKey).returnValue
+		printDebug('['+propKey+']: ['+str(cwID)+']')
+		
+		# Skip the component if not active
+		if (str(cwActive) == 'false'):
+			printInfo('Skipping Audit, Change Window is NOT ACTIVE for: ['+targetServer+']')
+			continue
+		elif (str(cwSnapshotPass) == 'false'):
+			
+			# Check to see if this is the first or second snapshot
+			# If this is the firtst snapshot (Window Opening) then CW_SNAPSHOT_PASS will be false.
+			# If the second snapshot (Window Closing) has run then CW_SNAPSHOT_PASS will be true
+			# The value will be reset to false after the audit is run.
+			
+			printInfo('Skipping Audit, Change Window is ACTIVE and ON (PASS 1) for: ['+targetServer+']')
+			printDebug('Setting Snapshot to Pass 2 for: ['+targetServer+']')
+			propKey = "CW_SNAPSHOT_PASS"
+			cwSnapshotPhase = setServerPropertyValueByName(targetServer,propKey,'true')
+			
+			# Determine if the "ALL Change" snapshot is in place
+			propKey = "CW_ALL_SS_KEY"
+			cwSnapshotAll = getServerPropertyValue(targetServer,propKey).returnValue
+			
+			if (str(cwSnapshotAll) == ''):
+				printInfo('Skipping Delta Audit, Initial UNATHORIZED DELTA snapshot for: ['+targetServer+'] has not been generated')
+				continue
+			else:
+				printInfo('Enabling UNATHORIZED DELTA Audit for: ['+targetServer+']')
+				auditJobName = "Change Tracking (Unauthorized) - "+str(componentName)
+				
+				snapshotBaseKey = str(cwSnapshotAll)
+				auditJobKey = runBlcliCmd('AuditJob','getDBKeyByGroupAndName',[unauthorizedAuditJobGroup,auditJobName])
+				
+				if (auditJobKey.success()):
+					# Remaster the Audit Job
+					printInfo('Remaster the Audit Job: ['+auditJobName+']')
+					auditJobKey = runBlcliCmd('AuditJob','resetJobMasterSnapshot',[unauthorizedAuditJobGroup,auditJobName,snapshotBaseKey])
+
+					if (auditJobKey.getError()):
+						printError ('Could not remaster the Audit Job: ['+auditJobName+']')
+						printError (auditJobKey.error)
+						continue
+				else:
+					# Job doesn't exist and I've got good snapshots
+					printInfo('Audit Job does not Exist: ['+auditJobName+']')
+					printInfo('Create the Audit Job: ['+auditJobName+']')
+					unauthorizedAuditGroupId = getJobGroupId(unauthorizedAuditJobGroup)
+					auditJobKey = runBlcliCmd('AuditJob','createSnapshotToSnapshotAuditJob',[auditJobName,unauthorizedAuditGroupId,snapshotBaseKey,snapshotNewKey])
+					if (auditJobKey.getError()):
+						printError ('Could not create the Audit Job: ['+auditJobName+']')
+						printError (auditJobKey.getError())
+						continue
+						
+				if (auditJobKey.success()):
+					# Retarget the Audit Job
+					printInfo('Retarget the Audit Job: ['+auditJobName+']')
+					auditJobKey = runBlcliCmd('AuditJob','resetJobTargetSnapshot',[unauthorizedAuditJobGroup,auditJobName,snapshotNewKey])
+					if (auditJobKey.getError()):
+						printError ('Could not retarget the Audit Job: ['+auditJobName+']')
+						printError (auditJobKey.getError())
+						continue
+				
+				# If all this worked, continue
+				if (auditJobKey.success):
+					auditJobKey = auditJobKey.returnValue
+					printInfo('Schedule the Audit Job: ['+auditJobName+']')
+				
+				# Now I'm going to run it
+				if (snmpHost != '0'):
+					# Need to send notification and schedule each job +1 min
+					printInfo('Adding One Time Schedule with SNMP Notification: ['+auditJobName+']')
+					scheduleTime = addTime(1)
+					auditJobRun = runBlcliCmd('Job','addOneTimeScheduleWithSNMPNotification',[auditJobKey,scheduleTime,snmpHost,statusType])
+				else:
+					# Just run the job w/o notification						
+					printInfo('Adding One Time Schedule: ['+auditJobName+']')
+					scheduleTime = addTime(1)
+					auditJobRun = runBlcliCmd('Job','addOneTimeSchedule',[auditJobKey,scheduleTime])			
+					
+				if (auditJobRun.getError()):
+					printError ('Error Running AuditJob')
+					printError (auditJobRun.getError())
+					
+				# Now that the audit has been run reset the property to the last snapshot in
+				# case the server is reset
+				propKey = "CW_ALL_SS_KEY"
+				printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+				cwSnapshotAll = setServerPropertyValueByName(targetServer,propKey,snapshotNewKey)
+				continue
+				
+		elif (str(cwChangeComplete) == 'false'):
+			
+			# If we made it this far the initial snapshot has been taken. However, the audit
+			# should not be run until the server is marked as "Changes Complete".
+			printInfo('Skipping Audit, Change Window is ACTIVE and ON (PASS 2) with changes NOT COMPLETED for: ['+targetServer+']')
+			continue
+			
+		else:
+			printInfo('Enabling Audit, Change Window is ACTIVE and ON (PASS 2) with CHANGES COMPLETED for: ['+targetServer+']')
+			
+		# If we make it this far then at least one server needs auditing
+		# Make sure there are atleast 2 snapshots to proceed, if there aren't, get it next time.
+		
+		if len(snapshotJobRunList) > 1:
+			pass
+		else:
+			# Not enough snapshots, next time
+			printInfo ("There is only 1 snapshot for the Component ["+componentName+"], not auditing")
+			continue
+		
+		if len(snapshotList) <= 1:		
+			# Not enough snapshots, next time
+			printInfo ("There is only 1 snapshot for the Component ["+componentName+"], not auditing")
+			continue
+		else:
+			
+			# Make sure the last 2 snapshots are good
+			snapshotBaseKey = validateSnapshot(snapshotList[1],snapshotJobKey,snapshotJobRunList[1],componentKey)
+			snapshotNewKey = validateSnapshot(snapshotList[0],snapshotJobKey,snapshotJobRunList[0],componentKey)
+			
+			# Insert the Snapshot Key into the Server's Property
+			# Mark the server as CYCLED so we know we have the
+			# pre and post authorized change window snapshots
+			propKey = "CW_CYCLED"
+			printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+			setServerPropertyValueByName(targetServer,propKey,'true')
+			propKey = "CW_ALL_SS_KEY"
+			printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+			setServerPropertyValueByName(targetServer,propKey,snapshotNewKey)
+			
+			# auditJobName = "Change Tracking (Authorized) - "+str(componentName)
+			
+			# If this change is linked to a ticket number or ID, include that identifier
+			# in the audit job name so that it can be easily linked
+			if (str(cwID) == ''):
+				auditJobName = "Change Tracking (Authorized) - "+str(componentName)                                
+			else:
+				printInfo('Change ID ['+str(cwID)+'] for: ['+targetServer+']')
+				auditJobName = 'Change Tracking ['+str(cwID)+'] (Authorized) - '+str(componentName)                                
+				
+			auditJobKey = runBlcliCmd('AuditJob','getDBKeyByGroupAndName',[masterAuditJobGroup,auditJobName])
+			# If the new Snapshot is bad, don't do anything
+			if (snapshotNewKey != 'Bad' ):
+				# Otherwise try to remaster/create/retarget and run the audit
+				printInfo('Setup the Audit Job: ['+auditJobName+']')
+				if (snapshotBaseKey != 'Bad'):
+					if (auditJobKey.success()):
+						# Remaster the Audit Job
+						printInfo('Remaster the Audit Job: ['+auditJobName+']')
+						auditJobKey = runBlcliCmd('AuditJob','resetJobMasterSnapshot',[masterAuditJobGroup,auditJobName,snapshotBaseKey])
+						
+						if (auditJobKey.getError()):
+							printError ('Could not remaster the Audit Job: ['+auditJobName+']')
+							printError (auditJobKey.error)
+					else:
+						# Job doesn't exist and I've got good snapshots
+						printInfo('Audit Job does not Exist: ['+auditJobName+']')
+						printInfo('Create the Audit Job: ['+auditJobName+']')
+						masterAuditGroupId = getJobGroupId(masterAuditJobGroup)
+						auditJobKey = runBlcliCmd('AuditJob','createSnapshotToSnapshotAuditJob',[auditJobName,masterAuditGroupId,snapshotBaseKey,snapshotNewKey])
+						if (auditJobKey.getError()):
+							printError ('Could not create the Audit Job: ['+auditJobName+']')
+							printError (auditJobKey.getError())
+				else:
+					printInfo ('The baseline snapshot was bad, using latest good Snapshot')
+				if (auditJobKey.success()):
+					# Retarget the Audit Job
+					printInfo('Retarget the Audit Job: ['+auditJobName+']')
+					auditJobKey = runBlcliCmd('AuditJob','resetJobTargetSnapshot',[masterAuditJobGroup,auditJobName,snapshotNewKey])
+					if (auditJobKey.getError()):
+						printError ('Could not retarget the Audit Job: ['+auditJobName+']')
+						printError (auditJobKey.getError())
+					
+				# If all this worked, continue
+				if (auditJobKey.success):
+					auditJobKey = auditJobKey.returnValue
+					printInfo('Schedule the Audit Job: ['+auditJobName+']')
+					
+					# Now I'm going to run it
+					if (snmpHost != '0'):
+						# Need to send notification and schedule each job +1 min
+						printInfo('Adding One Time Schedule with SNMP Notification: ['+auditJobName+']')
+						scheduleTime = addTime(1)
+						auditJobRun = runBlcliCmd('Job','addOneTimeScheduleWithSNMPNotification',[auditJobKey,scheduleTime,snmpHost,statusType])
+					else:
+						# Just run the job w/o notification						
+						printInfo('Adding One Time Schedule: ['+auditJobName+']')
+						scheduleTime = addTime(1)
+						auditJobRun = runBlcliCmd('Job','addOneTimeSchedule',[auditJobKey,scheduleTime])			
+						
+					if (auditJobRun.getError()):
+						printError ('Error Running AuditJob')
+						printError (auditJobRun.getError())
+						
+					# Now that the audit has been run reset the Property to false
+					propKey = "CW_SNAPSHOT_PASS"
+					printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+					cwSnapshotPhase = setServerPropertyValueByName(targetServer,propKey,'false')
+					
+					propKey = "CW_ACTIVE"
+					printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+					cwActive = setServerPropertyValueByName(targetServer,propKey,'false')
+					
+					propKey = "CW_CHANGE_COMPLETE"
+					printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+					cwChangeComplete = setServerPropertyValueByName(targetServer,propKey,'false')
+					
+					propKey = "CW_ID"
+					printDebug('Setting ['+propKey+'] on ['+targetServer+']')
+					cwID = setServerPropertyValueByName(targetServer,propKey,'unknown')
+					
+			else:
+				printInfo ('The most recent Snapshot was not valid, skipping')
+
+	sys.exit(0)
+			
+# end def main
+
+##
+## CALLING THE MAIN METHOD ##
+##
+
+vArgs = parseArgs(sys.argv[1:])
+
+c = vArgs.has_key('-c')
+a = vArgs.has_key('-a')
+g = vArgs.has_key('-g')
+n = vArgs.has_key('-n')
+s = vArgs.has_key('-s')
+t = vArgs.has_key('-t')
+d = vArgs.has_key('-d')
+u = vArgs.has_key('-u')
+
+if(not (c and a and g and s and t and u )):
+	usage(1)
+
+# Get a bunch of variables
+if (d):
+	DEBUG = vArgs['-d']
+        printDebug('-d: '+DEBUG+'')
+if (c):
+	masterComponentGroup = vArgs['-c']
+if (g):
+	masterTemplateGroup = vArgs['-g']
+        printDebug('-g: '+masterTemplateGroup+'')
+if (t):
+	templateName = vArgs['-t']
+        printDebug('-t: '+templateName+'')
+if (s):
+	masterSnapshotJobGroup = vArgs['-s']
+        printDebug('-s: '+masterSnapshotJobGroup+'')
+if (a):
+	masterAuditJobGroup = vArgs['-a']
+        printDebug('-a: '+masterAuditJobGroup+'')
+if (u):
+	unauthorizedAuditJobGroup = vArgs['-u']
+        printDebug('-u: '+unauthorizedAuditJobGroup+'')
+if (n):
+	snmpHost = vArgs['-n']
+	statusType=14
+        printDebug('-n: '+snmpHost+'')
+        
+printInfo('Initializing BLCLI connection. Standby...')
+
+jli = blcli.CLI()
+jli.connect()
+
+printInfo('BLCLI connection established.')
+
+vArgs = parseArgs(sys.argv[1:])
+
+# call main
+if (__name__ == '__main__'):
+        main()
+

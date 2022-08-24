@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE command_inventory SYSTEM "file://bladelogic.com/dtds/Command-Inventory.dtd">
+<command_inventory>
+    <name_space name="LogItem">
+	<complex_command command_id="getEventTypeIdByJobRunPS" published="yes" release="yes">        
+		<name>getEventTypeIdByJobRunPS</name>
+		<description>
+			<author/>
+			<paragraph>
+				<string_literal/>
+			</paragraph>
+		</description>
+            <argument_list>
+                <argument desc="" name="jobKey">com.bladelogic.model.base.keys.DBKey</argument>
+                <argument desc="" name="jobRunId">int</argument>
+            </argument_list>
+		<commands_to_execute>
+            <command_invocation>
+                <namespace_ref>LogItem</namespace_ref>
+                <name>getLogItemsByJobRun-api</name>
+                <input>$jobKey$ $jobRunId$</input>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>setTargetObject</name>
+		    <input/>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>LogItem</namespace_ref>
+		    <name>getEventTypeId</name>
+		    <input/>
+		</command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>setTargetObject</name>
+		    <input/>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>listPrint</name>
+		    <input/>
+            </command_invocation>
+        </commands_to_execute>	
+	</complex_command>
+	<complex_command command_id="getComponentKeyByJobRunPS" published="yes" release="yes">        
+		<name>getComponentKeyByJobRunPS</name>
+		<description>
+			<author/>
+			<paragraph>
+				<string_literal/>
+			</paragraph>
+		</description>
+            <argument_list>
+                <argument desc="" name="jobKey">com.bladelogic.model.base.keys.DBKey</argument>
+                <argument desc="" name="jobRunId">int</argument>
+            </argument_list>
+		<commands_to_execute>
+            <command_invocation>
+                <namespace_ref>LogItem</namespace_ref>
+                <name>getLogItemsByJobRun-api</name>
+                <input>$jobKey$ $jobRunId$</input>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>setTargetObject</name>
+		    <input/>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>LogItem</namespace_ref>
+		    <name>getComponentKey</name>
+		    <input/>
+		</command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>setTargetObject</name>
+		    <input/>
+            </command_invocation>
+		<command_invocation>
+		    <namespace_ref>Utility</namespace_ref>
+		    <name>listPrint</name>
+		    <input/>
+            </command_invocation>
+        </commands_to_execute>	
+	</complex_command>
+    </name_space>
+</command_inventory>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BlReportsExport locale="en" version="4.0">
+    <ReportDefinitions>
+        <ReportDefinition type="SingleReportDefinition">
+            <Attributes>
+                <Name><![CDATA[Change Tracking (Authorized Changes)]]></Name>
+                <Description><![CDATA[]]></Description>
+                <IsAdHocReport>1</IsAdHocReport>
+                <IsDashboardReport>0</IsDashboardReport>
+                <IsReadonly>0</IsReadonly>
+                <FolderName><![CDATA[/Workspace/Frank]]></FolderName>
+                <RDL><![CDATA[adhoc\adhoc_30717.rdl]]></RDL>
+                <PageSize>100</PageSize>
+                <ComputeStatisticsAtHighestLevelOfAggregation>false</ComputeStatisticsAtHighestLevelOfAggregation>
+                <Height>500</Height>
+                <Width>950</Width>
+            </Attributes>
+            <Filters>
+                <Filter>
+                    <Type>11</Type>
+                    <Id>59</Id>
+                    <Value><![CDATA[3_39_1|-1|(rpt_job_run)_(start_time)|13|0|1w53_1|1|(rpt_job)_(name)|7|0|Change Tracking (Authorized)]]></Value>
+                </Filter>
+            </Filters>
+            <NonAdHocDrillThroughList/>
+            <GroupByColumns>
+                <Column>
+                    <ColumnInternalName>name</ColumnInternalName>
+                    <TableInternalName>rpt_job</TableInternalName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>name</ColumnInternalName>
+                    <TableInternalName>rpt_device</TableInternalName>
+                </Column>
+            </GroupByColumns>
+            <SortByColumns>
+                <Column>
+                    <ColumnInternalName>end_time</ColumnInternalName>
+                    <TableInternalName>rpt_job_run</TableInternalName>
+                    <IsSortAscending>0</IsSortAscending>
+                </Column>
+            </SortByColumns>
+            <SummaryColumns/>
+            <DisplayColumns>
+                <Column>
+                    <ColumnInternalName>name</ColumnInternalName>
+                    <TableInternalName>rpt_device</TableInternalName>
+                    <DisplayName><![CDATA[Server Name]]></DisplayName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>end_time</ColumnInternalName>
+                    <TableInternalName>rpt_job_run</TableInternalName>
+                    <DisplayName><![CDATA[Run Time]]></DisplayName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>derived_audit_total_differences</ColumnInternalName>
+                    <TableInternalName>rpt_compliance_fact</TableInternalName>
+                    <DisplayName><![CDATA[Total Differences]]></DisplayName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>derived_audit_policy_compl</ColumnInternalName>
+                    <TableInternalName>rpt_compliance_fact</TableInternalName>
+                    <DisplayName><![CDATA[% Compliance]]></DisplayName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>derived_pct_successfully_audited</ColumnInternalName>
+                    <TableInternalName>rpt_compliance_fact</TableInternalName>
+                    <DisplayName><![CDATA[% Successfully Audited]]></DisplayName>
+                </Column>
+                <Column>
+                    <ColumnInternalName>name</ColumnInternalName>
+                    <TableInternalName>rpt_job</TableInternalName>
+                    <DisplayName><![CDATA[Job Name]]></DisplayName>
+                </Column>
+            </DisplayColumns>
+            <AxisXDisplayColumn/>
+            <AxisYDisplayColumn/>
+            <DataDomain>
+                <Id>1</Id>
+            </DataDomain>
+            <PresentationType>
+                <Id>1</Id>
+            </PresentationType>
+        </ReportDefinition>
+    </ReportDefinitions>
+</BlReportsExport>

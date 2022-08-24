@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE command_inventory SYSTEM "file://bladelogic.com/dtds/Command-Inventory.dtd">
+<command_inventory>
+    <name_space name="Component">
+	<complex_command command_id="findAllByTemplatePS" published="yes" release="yes">        
+		<name>findAllByTemplatePS</name>
+		<description>
+			<author/>
+			<paragraph>
+				<string_literal/>
+			</paragraph>
+		</description>
+		<argument_list>
+			<argument desc="" name="templateKey">com.bladelogic.model.base.keys.DBKey</argument>
+		</argument_list>
+		<commands_to_execute>
+			<command_invocation>
+				<namespace_ref>Component</namespace_ref>
+				<name>findAllByTemplate</name>
+				<input>$templateKey$</input>
+			</command_invocation>
+			<command_invocation>
+				<namespace_ref>Utility</namespace_ref>
+				<name>setTargetObject</name>
+				<input/>
+			</command_invocation>
+			<command_invocation>
+				<namespace_ref>Component</namespace_ref>
+				<name>getDBKey</name>
+				<input/>
+			</command_invocation>
+			<command_invocation>
+				<namespace_ref>Utility</namespace_ref>
+				<name>setTargetObject</name>
+				<input/>
+			</command_invocation>
+			<command_invocation>
+				<namespace_ref>Utility</namespace_ref>
+				<name>listPrint</name>
+				<input/>
+			</command_invocation>
+		</commands_to_execute>
+	</complex_command>
+    </name_space>
+</command_inventory>
